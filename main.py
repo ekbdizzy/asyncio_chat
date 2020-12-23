@@ -9,16 +9,16 @@ async def tcp_echo_client(message):
         host=HOST, port=PORT
     )
 
+    # print(f'Send {message!r}')
+    # writer.write(message.encode())
 
-    print(f'Send {message!r}')
-    writer.write(message.encode())
+    data = await reader.readline()
+    print(f"{data.decode()!r}")
 
-    data  = await reader.read(100)
-    print(f"Received {data.decode()!r}")
-
-    print("Close the connection")
-    writer.close()
-
-asyncio.run(tcp_echo_client("Hello"))
+    # print("Close the connection")
+    # writer.close()
 
 
+if __name__ == "__main__":
+    while True:
+        asyncio.run(tcp_echo_client(""))
