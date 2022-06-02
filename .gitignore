@@ -1,4 +1,6 @@
 venv/
 .idea/
 **/__pycache__/
-messages.txt
+.env
+*.txt
+*.history

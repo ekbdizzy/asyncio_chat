@@ -4,15 +4,7 @@ import os.path
 import datetime
 
 import aiofiles
-
-HOST = 'minechat.dvmn.org'
-PORT = 5000
-FILENAME = 'messages.txt'
-
-parser = argparse.ArgumentParser()
-parser.add_argument('--host', dest='host', default=HOST, type=str, help='Host name')
-parser.add_argument('--port', dest='port', default=5000, type=int, help='Port number')
-parser.add_argument('--history', dest='filename', default=FILENAME, type=str, help='File to save history')
+from environ import Env
 
 
 async def tcp_echo_client(host, port, filename, message=""):
@@ -29,8 +21,22 @@ async def tcp_echo_client(host, port, filename, message=""):
 
 
 if __name__ == '__main__':
-    if os.path.exists(FILENAME):
-        os.remove(FILENAME)
+
+    env = Env()
+    env.read_env()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--host', dest='host', type=str, help='Host name')
+    parser.add_argument('--port', dest='port', type=int, help='Port number')
+    parser.add_argument('--history', dest='filename', type=str, help='File to save history')
     args = parser.parse_args()
+
+    host = args.host or env.str('HOST', 'minechat.dvmn.org')
+    port = args.port or env.int('PORT', 5000)
+    filename = args.filename or env.str('FILENAME', 'chat.history')
+
+    if os.path.exists(filename):
+        os.remove(filename)
+
     while True:
-        asyncio.run(tcp_echo_client(args.host, args.port, args.filename, ''))
+        asyncio.run(tcp_echo_client(host, port, filename, ''))
