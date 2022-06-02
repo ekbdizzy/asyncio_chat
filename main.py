@@ -1,7 +1,12 @@
 import asyncio
+import os.path
+import datetime
 
-HOST = "minechat.dvmn.org"
+import aiofiles
+
+HOST = 'minechat.dvmn.org'
 PORT = 5000
+FILENAME = 'messages.txt'
 
 
 async def tcp_echo_client(message):
@@ -9,16 +14,16 @@ async def tcp_echo_client(message):
         host=HOST, port=PORT
     )
 
-    # print(f'Send {message!r}')
-    # writer.write(message.encode())
+    phrase = await reader.readline()
 
-    data = await reader.readline()
-    print(f"{data.decode()!r}")
-
-    # print("Close the connection")
-    # writer.close()
+    async with aiofiles.open(FILENAME, 'a') as file:
+        phrase_with_timestamp = f'{datetime.datetime.now().strftime("[%d.%m.%Y %H:%M]")} {phrase.decode("utf-8")}'
+        print(phrase_with_timestamp)
+        await file.write(phrase_with_timestamp)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    if os.path.exists(FILENAME):
+        os.remove(FILENAME)
     while True:
-        asyncio.run(tcp_echo_client(""))
+        asyncio.run(tcp_echo_client(''))
