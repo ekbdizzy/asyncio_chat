@@ -1,6 +1,7 @@
 ## CLI chat client on asyncio.
 Chat client with CLI interface for minechat.dvmn.org.
 It's a lesson of [Async Python](https://dvmn.org/modules/async-python/) course by Devman. 
+
 ---
 ## Install
 
@@ -36,7 +37,6 @@ You can run script with args:
 ```bash
 python read_chat.py --host minechat.dvmn.org --port 5000 --history 'chat.history'
 ```
----
 
 ### Write message to chat
 
@@ -45,9 +45,9 @@ You can run script with args:
 * `--host` hostname, default is `minechat.dvmn.org`
 * `--port` port number, default is `5050`
 * `--username` registers new user with this username and sends message from his name 
-* `--token` if token, tries to log in and send message from that account.
+* `--token` if token, tries to log in and send message from current account.
 
 ```bash
-python submit_message.py --message
+python submit_message.py --message Hello
 ```
 
