@@ -12,6 +12,13 @@ env.read_env()
 logger = logging.getLogger('sender')
 
 
+def sanitize(string: str) -> str:
+    """Replace \n and \t from string. Can be updated with new replacements."""
+    string = string.replace('\n', ' ')
+    string = string.replace('\t', '    ')
+    return string
+
+
 @contextlib.asynccontextmanager
 async def open_connection(host: str, port: int) -> tuple:
     reader, writer = await asyncio.open_connection(host, port)
@@ -29,7 +36,7 @@ async def register(connection: asyncio.StreamReader, username: str) -> dict | No
     writer.write(f'\n'.encode())
 
     await reader.readline()
-    writer.write(f'{username}\n'.encode())
+    writer.write(f'{sanitize(username)}\n'.encode())
 
     message = await reader.readline()
     credentials = json.loads(message.decode())
@@ -50,7 +57,7 @@ async def authorize(connection: asyncio.StreamReader, token: str) -> bool:
     text = await reader.readline()
     logger.info(text.decode())
 
-    writer.write(f"{token}\n".encode())
+    writer.write(f"{sanitize(token)}\n".encode())
     await writer.drain()
 
     response = await reader.readline()
@@ -63,7 +70,7 @@ async def authorize(connection: asyncio.StreamReader, token: str) -> bool:
 
 
 async def _send_message(writer, message):
-    writer.write(f'{message}\n\n'.encode())
+    writer.write(f'{sanitize(message)}\n\n'.encode())
     await writer.drain()
 
 
