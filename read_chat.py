@@ -1,10 +1,11 @@
 import asyncio
 import argparse
-import os.path
 import datetime
 
 import aiofiles
 from environ import Env
+
+from streaming_tools import open_connection
 
 
 def add_timestamp(message: str | bytes, stamp_format: str = "[%d.%m.%Y %H:%M]") -> str:
@@ -15,14 +16,16 @@ def add_timestamp(message: str | bytes, stamp_format: str = "[%d.%m.%Y %H:%M]") 
     return f'{timestamp} {message.strip()}'
 
 
-async def tcp_echo_client(host: str, port: int, filename: str) -> None:
+async def show_tcp_echo_client(host: str, port: int, filename: str) -> None:
     """Show messages from chat to console and save history to file."""
-    reader, writer = await asyncio.open_connection(host=host, port=port)
-    phrase = await reader.readline()
-    async with aiofiles.open(filename, 'a') as file:
-        phrase_with_timestamp = add_timestamp(phrase)
-        print(phrase_with_timestamp)
-        await file.write(phrase_with_timestamp)
+    while True:
+        async with open_connection(host=host, port=port) as connection:
+            reader, writer = connection
+            phrase = await reader.readline()
+        async with aiofiles.open(filename, 'a') as file:
+            phrase_with_timestamp = add_timestamp(phrase)
+            print(phrase_with_timestamp)
+            await file.write(f'{phrase_with_timestamp}\n')
 
 
 if __name__ == '__main__':
@@ -37,11 +40,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     host = args.host or env.str('HOST', 'minechat.dvmn.org')
-    port = args.port or env.int('PORT', 5000)
+    port = args.port or env.int('PORT_READ', 5000)
     filename = args.filename or env.str('FILENAME', 'chat.history')
 
-    if os.path.exists(filename):
-        os.remove(filename)
-
-    while True:
-        asyncio.run(tcp_echo_client(host, port, filename))
+    asyncio.run(show_tcp_echo_client(host, port, filename))

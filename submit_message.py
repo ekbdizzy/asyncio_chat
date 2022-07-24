@@ -1,24 +1,22 @@
 import asyncio
 import argparse
-import contextlib
 import json
 import logging
 
 import aiofiles
 from environ import Env
 
-env = Env()
-env.read_env()
+from streaming_tools import open_connection
+
+
 logger = logging.getLogger('sender')
 
 
 def sanitize(string: str) -> str:
     """Replace \n and \t from string. Can be updated with new replacements."""
-    if string:
-        string = string.replace('\n', ' ')
-        string = string.replace('\t', '    ')
-        return string
-    return ""
+    string = string.replace('\n', ' ')
+    string = string.replace('\t', '    ')
+    return string
 
 
 def parse_args():
@@ -46,6 +44,7 @@ def parse_args():
     parser.add_argument(
         '--username',
         dest='username',
+        default='',
         type=str,
         help='Username of registered user.'
     )
@@ -58,24 +57,16 @@ def parse_args():
     return parser.parse_args()
 
 
-@contextlib.asynccontextmanager
-async def open_connection(host: str, port: int) -> tuple:
-    reader, writer = await asyncio.open_connection(host, port)
-    try:
-        yield reader, writer
-    finally:
-        writer.close()
-        await writer.wait_closed()
-
-
 async def register(connection, username: str) -> dict | None:
     reader, writer = connection
 
     await reader.readline()
     writer.write(f'\n'.encode())
+    await writer.drain()
 
     await reader.readline()
     writer.write(f'{sanitize(username)}\n'.encode())
+    await writer.drain()
 
     response = await reader.readline()
     credentials = json.loads(response.decode())
@@ -97,16 +88,14 @@ async def authorize(connection, token: str) -> bool:
     logger.debug(text.decode())
 
     writer.write(f"{sanitize(token)}\n".encode())
-    logger.debug(f'Sent token_or_username {token}')
     await writer.drain()
+    logger.debug(f'Sent token_or_username {token}')
 
     response = await reader.readline()
-    try:
-        assert json.loads(response) is None
-        logging.error('The token is invalid. Check the token or register again.')
-        return False
-    except AssertionError:
+    if json.loads(response):
         return True
+    logging.error('The token is invalid. Check the token or register again.')
+    return False
 
 
 async def send_message(connection, message):
@@ -116,18 +105,15 @@ async def send_message(connection, message):
 
 
 async def submit_message(args):
-    if args.token:
-        async with open_connection(args.host, args.port) as connection:
-            if await authorize(connection, args.token):
-                await send_message(connection, args.message)
-
-    else:
-        async with open_connection(args.host, args.port) as connection:
+    async with open_connection(args.host, args.port) as connection:
+        if not (args.token and await authorize(connection, args.token)):
             await register(connection, args.username)
-            await send_message(connection, args.message)
+        await send_message(connection, args.message)
 
 
 def main():
+    env = Env()
+    env.read_env()
     args = parse_args()
     logging.basicConfig(level=logging.INFO)
     asyncio.run(submit_message(args))

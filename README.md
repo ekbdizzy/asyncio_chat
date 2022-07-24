@@ -22,7 +22,7 @@ pip install -r requirements.txt
 
 ```bash
 HOST=minechat.dvmn.org
-PORT=5000
+PORT_READ=5000
 FILENAME=chat.history
 ```
 ---
