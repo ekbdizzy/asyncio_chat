@@ -16,17 +16,16 @@ def add_timestamp(message: str | bytes, stamp_format: str = "[%d.%m.%Y %H:%M]") 
     return f'{timestamp} {message.strip()}'
 
 
-async def show_tcp_echo_client(host: str, port: int, filename: str) -> None:
+async def read_stream(host: str, port: int, filename: str) -> None:
     """Show messages from chat to console and save history to file."""
-    while True:
-        async with open_connection(host=host, port=port) as connection:
-            reader, writer = connection
-            phrase = await reader.readline()
+    async with open_connection(host=host, port=port) as connection:
         async with aiofiles.open(filename, 'a') as file:
-            phrase_with_timestamp = add_timestamp(phrase)
-            print(phrase_with_timestamp)
-            await file.write(f'{phrase_with_timestamp}\n')
-
+            while True:
+                reader, writer = connection
+                phrase = await reader.readline()
+                phrase_with_timestamp = add_timestamp(phrase)
+                print(phrase_with_timestamp)
+                await file.write(f'{phrase_with_timestamp}\n')
 
 if __name__ == '__main__':
 
@@ -43,4 +42,4 @@ if __name__ == '__main__':
     port = args.port or env.int('PORT_READ', 5000)
     filename = args.filename or env.str('FILENAME', 'chat.history')
 
-    asyncio.run(show_tcp_echo_client(host, port, filename))
+    asyncio.run(read_stream(host, port, filename))
