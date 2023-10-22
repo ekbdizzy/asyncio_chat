@@ -13,6 +13,7 @@ import gui
 messages_queue = asyncio.Queue()
 sending_queue = asyncio.Queue()
 saving_queue = asyncio.Queue()
+watchdog_queue = asyncio.Queue()
 status_updates_queue = asyncio.Queue()
 
 
@@ -38,15 +39,18 @@ async def send_msgs(host, port, queue):
     status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
     async with open_connection(host, port) as connection:
         status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
+        await watchdog_queue.put("Prompt before auth")
         creds = await authorize(connection, token)
         if not creds:
             raise InvalidToken
         event = gui.NicknameReceived(creds["nickname"])
+        await watchdog_queue.put("Authorization done")
         status_updates_queue.put_nowait(event)
 
         while True:
             message = await queue.get()
             await send_message(connection, message)
+            await watchdog_queue.put("Message sent")
 
 
 async def save_msgs(filepath: str, queue: asyncio.Queue):
@@ -67,13 +71,21 @@ async def read_msgs(host: str, port: int, queue: asyncio.Queue):
             phrase = await reader.readline()
             stamped_phrase = add_timestamp(phrase)
             queue.put_nowait(stamped_phrase)
+            await watchdog_queue.put("New message in chat")
             await saving_queue.put(stamped_phrase)
+
+
+async def watch_for_connection(queue: asyncio.Queue):
+    while True:
+        message = await queue.get()
+        watchdog_logger.info(message)
 
 
 async def main():
 
     loop = await asyncio.gather(
         gui.draw(messages_queue, sending_queue, status_updates_queue),
+        watch_for_connection(watchdog_queue),
         load_msg_history(filepath, messages_queue),
         # generate_msgs(messages_queue),
         read_msgs(host, port_read, messages_queue),
@@ -90,7 +102,19 @@ if __name__ == "__main__":
     env = Env()
     env.read_env()
 
-    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger("main")
+    logger_handler = logging.StreamHandler()
+    logger_fmt = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    logger_handler.setFormatter(logger_fmt)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(logger_handler)
+
+    watchdog_logger = logging.getLogger(name="watchdog_logger")
+    watchdog_handler = logging.StreamHandler()
+    watchdog_logger_fmt = logging.Formatter(fmt='[%(created)d] Connection is alive. %(message)s')
+    watchdog_handler.setFormatter(watchdog_logger_fmt)
+    watchdog_logger.setLevel(logging.DEBUG)
+    watchdog_logger.addHandler(watchdog_handler)
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--host', dest='host', type=str, help='Host name')
