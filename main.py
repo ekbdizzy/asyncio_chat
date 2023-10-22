@@ -34,12 +34,16 @@ async def generate_msgs(queue: asyncio.Queue):
         await asyncio.sleep(1)
 
 
-
 async def send_msgs(host, port, queue):
+    status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
     async with open_connection(host, port) as connection:
+        status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.ESTABLISHED)
         creds = await authorize(connection, token)
         if not creds:
             raise InvalidToken
+        event = gui.NicknameReceived(creds["nickname"])
+        status_updates_queue.put_nowait(event)
+
         while True:
             message = await queue.get()
             await send_message(connection, message)
@@ -55,7 +59,9 @@ async def save_msgs(filepath: str, queue: asyncio.Queue):
 
 async def read_msgs(host: str, port: int, queue: asyncio.Queue):
     """Read messages from server."""
+    status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.INITIATED)
     async with open_connection(host, port) as connection:
+        status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
         while True:
             reader, writer = connection
             phrase = await reader.readline()

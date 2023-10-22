@@ -81,7 +81,7 @@ async def register(connection, username: str) -> dict | None:
     return credentials
 
 
-async def authorize(connection, token: str) -> bool:
+async def authorize(connection, token: str) -> dict | bool:
     reader, writer = connection
 
     text = await reader.readline()
