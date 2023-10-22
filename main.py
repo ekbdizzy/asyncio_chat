@@ -16,9 +16,9 @@ saving_queue = asyncio.Queue()
 status_updates_queue = asyncio.Queue()
 
 
-
 class InvalidToken(Exception):
-    messagebox.showinfo("Invalid Token", "Your token is not valid. Please check it and try again.")
+    def __init__(self):
+        messagebox.showinfo("Invalid Token", "Your token is not valid. Please check it and try again.")
 
 
 async def load_msg_history(filepath: str, queue: asyncio.Queue):
@@ -34,9 +34,11 @@ async def generate_msgs(queue: asyncio.Queue):
         await asyncio.sleep(1)
 
 
+
 async def send_msgs(host, port, queue):
     async with open_connection(host, port) as connection:
-        if not (args.token and await authorize(connection, args.token)):
+        creds = await authorize(connection, token)
+        if not creds:
             raise InvalidToken
         while True:
             message = await queue.get()

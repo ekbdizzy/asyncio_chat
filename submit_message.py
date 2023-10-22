@@ -93,7 +93,7 @@ async def authorize(connection, token: str) -> bool:
 
     response = await reader.readline()
     if json.loads(response):
-        return True
+        return json.loads(response)
     logging.error('The token is invalid. Check the token or register again.')
     return False
 
