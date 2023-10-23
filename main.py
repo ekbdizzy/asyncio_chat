@@ -1,14 +1,18 @@
 import argparse
 import asyncio
-import time
 import logging
 from tkinter import messagebox
 import aiofiles
 from environ import Env
 
+from anyio import create_task_group
+from async_timeout import timeout
+
 from streaming_tools import open_connection, add_timestamp
 from submit_message import authorize, send_message
 import gui
+
+TIMEOUT = 4
 
 messages_queue = asyncio.Queue()
 sending_queue = asyncio.Queue()
@@ -27,12 +31,6 @@ async def load_msg_history(filepath: str, queue: asyncio.Queue):
     async with aiofiles.open(filepath) as file:
         contents = await file.read()
         await queue.put(contents.strip())
-
-
-async def generate_msgs(queue: asyncio.Queue):
-    while True:
-        queue.put_nowait(time.time())
-        await asyncio.sleep(1)
 
 
 async def send_msgs(host, port, queue):
@@ -77,20 +75,34 @@ async def read_msgs(host: str, port: int, queue: asyncio.Queue):
 
 async def watch_for_connection(queue: asyncio.Queue):
     while True:
-        message = await queue.get()
-        watchdog_logger.info(message)
+        try:
+            async with timeout(TIMEOUT) as cm:
+                message = await queue.get()
+                watchdog_logger.info(message)
+        except asyncio.TimeoutError:
+            if cm.expired:
+                watchdog_logger.warning(f"{TIMEOUT}s timeout is elapsed")
+                raise ConnectionError
+
+
+async def handle_connection():
+    while True:
+        try:
+            async with create_task_group() as task_group:
+                task_group.start_soon(read_msgs, host, port_read, messages_queue)
+                task_group.start_soon(send_msgs, host, port_write, sending_queue)
+                task_group.start_soon(watch_for_connection, watchdog_queue)
+        except* ConnectionError:
+            logger.debug("Reconnect")
+            await asyncio.sleep(1)
 
 
 async def main():
-
     loop = await asyncio.gather(
         gui.draw(messages_queue, sending_queue, status_updates_queue),
-        watch_for_connection(watchdog_queue),
         load_msg_history(filepath, messages_queue),
-        # generate_msgs(messages_queue),
-        read_msgs(host, port_read, messages_queue),
         save_msgs(filepath, saving_queue),
-        send_msgs(host, port_write, sending_queue),
+        handle_connection(),
         return_exceptions=True,
     )
 
@@ -98,7 +110,6 @@ async def main():
 
 
 if __name__ == "__main__":
-
     env = Env()
     env.read_env()
 
@@ -134,4 +145,3 @@ if __name__ == "__main__":
     username = args.username
 
     asyncio.run(main())
-

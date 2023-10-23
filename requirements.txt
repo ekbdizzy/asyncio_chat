@@ -1,2 +1,4 @@
 aiofiles==0.8.0
 python-environ==0.4.54
+async-timeout==4.0.3
+anyio==4.0.0
