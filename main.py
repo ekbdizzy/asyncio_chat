@@ -7,7 +7,7 @@ from anyio import create_task_group, run
 from async_timeout import timeout
 import aiofiles
 from environ import Env
-from tkinter import messagebox
+from tkinter import messagebox, TclError
 
 import gui
 from streaming_tools import authorize, send_message, open_connection, add_timestamp
@@ -116,7 +116,6 @@ async def main():
         task_group.start_soon(save_msgs, filepath, saving_queue)
         task_group.start_soon(handle_connection)
 
-
 if __name__ == "__main__":
     env = Env()
     env.read_env()
@@ -152,4 +151,9 @@ if __name__ == "__main__":
     token = args.token or env.str("ACCOUNT_TOKEN")
     username = args.username
 
-    run(main)
+    try:
+        run(main)
+    except* InvalidToken:
+        logger.debug('Incorrect token. Exit.')
+    except* (KeyboardInterrupt, TclError, asyncio.exceptions.CancelledError):
+        logger.debug('The chat is closed. Exit.')

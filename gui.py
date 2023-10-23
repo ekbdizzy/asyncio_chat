@@ -4,6 +4,7 @@ from tkinter.scrolledtext import ScrolledText
 from enum import Enum
 from anyio import create_task_group
 
+
 class TkAppClosed(Exception):
     pass
 
@@ -130,4 +131,3 @@ async def draw(messages_queue, sending_queue, status_updates_queue):
         task_group.start_soon(update_tk, root_frame)
         task_group.start_soon(update_conversation_history, conversation_panel, messages_queue)
         task_group.start_soon(update_status_panel, status_labels, status_updates_queue)
-
