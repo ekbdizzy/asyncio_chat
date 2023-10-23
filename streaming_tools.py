@@ -34,8 +34,8 @@ def sanitize(string: str) -> str:
     return string
 
 
-async def register(connection, username: str) -> dict | None:
-    reader, writer = connection
+async def register(username: str, host, port) -> dict | None:
+    reader, writer = await asyncio.open_connection(host, port)
 
     await reader.readline()
     writer.write(f'\n'.encode())
@@ -56,6 +56,7 @@ async def register(connection, username: str) -> dict | None:
         logging.info("Username and token saved.")
 
     return credentials
+
 
 async def authorize(connection, token: str) -> dict | bool:
     reader, writer = connection
