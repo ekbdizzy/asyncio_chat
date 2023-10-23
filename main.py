@@ -1,18 +1,20 @@
 import argparse
 import asyncio
 import logging
-from tkinter import messagebox
-import aiofiles
-from environ import Env
+import socket
 
 from anyio import create_task_group
 from async_timeout import timeout
+import aiofiles
+from environ import Env
+from tkinter import messagebox
 
+import gui
 from streaming_tools import open_connection, add_timestamp
 from submit_message import authorize, send_message
-import gui
 
-TIMEOUT = 4
+TIMEOUT = 5
+READ_TIMEOUT = 5
 
 messages_queue = asyncio.Queue()
 sending_queue = asyncio.Queue()
@@ -66,7 +68,7 @@ async def read_msgs(host: str, port: int, queue: asyncio.Queue):
         status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.ESTABLISHED)
         while True:
             reader, writer = connection
-            phrase = await reader.readline()
+            phrase = await asyncio.wait_for(reader.readline(), READ_TIMEOUT)
             stamped_phrase = add_timestamp(phrase)
             queue.put_nowait(stamped_phrase)
             await watchdog_queue.put("New message in chat")
@@ -85,6 +87,13 @@ async def watch_for_connection(queue: asyncio.Queue):
                 raise ConnectionError
 
 
+async def ping(queue: asyncio.Queue):
+    """Send the blank messages to the server to test the connection."""
+    while True:
+        queue.put_nowait("")
+        await asyncio.sleep(1)
+
+
 async def handle_connection():
     while True:
         try:
@@ -92,8 +101,12 @@ async def handle_connection():
                 task_group.start_soon(read_msgs, host, port_read, messages_queue)
                 task_group.start_soon(send_msgs, host, port_write, sending_queue)
                 task_group.start_soon(watch_for_connection, watchdog_queue)
-        except* ConnectionError:
+                task_group.start_soon(ping, sending_queue)
+        except* (ConnectionError, TimeoutError, socket.gaierror):
             logger.debug("Reconnect")
+            status_updates_queue.put_nowait(gui.ReadConnectionStateChanged.INITIATED)
+            status_updates_queue.put_nowait(gui.SendingConnectionStateChanged.INITIATED)
+            status_updates_queue.put_nowait(gui.NicknameReceived("unknown"))
             await asyncio.sleep(1)
 
 
@@ -105,7 +118,6 @@ async def main():
         handle_connection(),
         return_exceptions=True,
     )
-
     loop.run_until_complete(gui.draw(messages_queue, sending_queue, status_updates_queue))
 
 
