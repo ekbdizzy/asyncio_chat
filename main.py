@@ -14,6 +14,7 @@ from streaming_tools import authorize, send_message, open_connection, add_timest
 
 CONNECTION_TIMEOUT = 5
 READ_TIMEOUT = 5
+PING_TIMEOUT = 2
 
 messages_queue = asyncio.Queue()
 sending_queue = asyncio.Queue()
@@ -90,7 +91,7 @@ async def ping(queue: asyncio.Queue):
     """Send the blank messages to the server to test the connection."""
     while True:
         queue.put_nowait("")
-        await asyncio.sleep(1)
+        await asyncio.sleep(PING_TIMEOUT)
 
 
 async def handle_connection():
