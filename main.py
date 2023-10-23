@@ -140,7 +140,6 @@ if __name__ == "__main__":
     parser.add_argument('--history', dest='filepath', type=str, help='File to save history')
     parser.add_argument('--port_write', dest='port_write', type=int, default=5050, help='Write port number')
     parser.add_argument('--token', dest='token', type=str, help='Token of registered user.')
-    parser.add_argument('--username', dest='username', default='', type=str, help='Username of registered user.')
 
     args = parser.parse_args()
 
@@ -149,7 +148,6 @@ if __name__ == "__main__":
     filepath = args.filepath or env.str('FILEPATH', 'chat.history')
     port_write = args.port_write or env.int('PORT_WRITE', 5050)
     token = args.token or env.str("ACCOUNT_TOKEN")
-    username = args.username
 
     try:
         run(main)

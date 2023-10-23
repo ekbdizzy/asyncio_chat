@@ -1,11 +1,11 @@
-## CLI chat client on asyncio.
-Chat client with CLI interface for minechat.dvmn.org.
-It's a lesson of [Async Python](https://dvmn.org/modules/async-python/) course by Devman. 
+## GUI chat client on python asyncio.
+Chat client with GUI interface for minechat.dvmn.org.
+It's a lesson of the [Async Python Course](https://dvmn.org/modules/async-python/) by the Devman. 
 
 ---
 ## Install
 
-1. Create [virtualenv](https://docs.python.org/3/library/venv.html) of Python > 3.7 and activate it:
+1. Create [virtualenv](https://docs.python.org/3/library/venv.html) of Python > 3.11 and activate it:
 
 ```bash
 python3 -m virtualenv venv
@@ -21,33 +21,38 @@ pip install -r requirements.txt
 3. You also can create `.env` file to save ENVIRONMENT variables and use it instead of CLI args.
 
 ```bash
-HOST=minechat.dvmn.org
-PORT_READ=5000
-FILENAME=chat.history
+ACCOUNT_TOKEN=some_token  # you can get token within registration.
+HOST=minechat.dvmn.org  # host of server.
+PORT_READ=5000  # port to read messages form server.
+PORT_WRITE=5050  # port to send messages to server.
+FILEPATH=chat.history  # path to file with a chat history.
 ```
 ---
-## Run scripts
+## How to start
 
-### Read chat
-You can run script with args:
-* `--host` hostname, default is `minechat.dvmn.org`
-* `--port` port number, default is `5000`
-* `--history` filepath to save history, default is `chat.history`
-
+### Register new account
+Run script and enter your username.<br>
+After successful registration you can get token in `credentials.json`. 
 ```bash
-python read_chat.py --host minechat.dvmn.org --port 5000 --history 'chat.history'
+python register.py
 ```
 
-### Write message to chat
+### Run chat 
+```bash
+python main.py
+```
+You'll see a graphical interface of a chat after you run script.
 
-You can run script with args:
+### You can use args instead of `.env` file:
+
 * `--message` (REQUIRED) message you want to send.
 * `--host` hostname, default is `minechat.dvmn.org`
-* `--port` port number, default is `5050`
-* `--username` registers new user with this username and sends message from his name 
+* `--port_read` read port number, default is `5050`
+* `--port_write` write port number, default is `5050`
 * `--token` if token, tries to log in and send message from current account.
+* `--history` file path to save chat history.
 
 ```bash
-python submit_message.py --message Hello
+python main.py --host minechat.prod.org --token token_uuid
 ```
 
