@@ -3,17 +3,16 @@ import asyncio
 import logging
 import socket
 
-from anyio import create_task_group
+from anyio import create_task_group, run
 from async_timeout import timeout
 import aiofiles
 from environ import Env
 from tkinter import messagebox
 
 import gui
-from streaming_tools import open_connection, add_timestamp
-from submit_message import authorize, send_message
+from streaming_tools import authorize, send_message, open_connection, add_timestamp
 
-TIMEOUT = 5
+CONNECTION_TIMEOUT = 5
 READ_TIMEOUT = 5
 
 messages_queue = asyncio.Queue()
@@ -78,12 +77,12 @@ async def read_msgs(host: str, port: int, queue: asyncio.Queue):
 async def watch_for_connection(queue: asyncio.Queue):
     while True:
         try:
-            async with timeout(TIMEOUT) as cm:
+            async with timeout(CONNECTION_TIMEOUT) as cm:
                 message = await queue.get()
                 watchdog_logger.info(message)
         except asyncio.TimeoutError:
             if cm.expired:
-                watchdog_logger.warning(f"{TIMEOUT}s timeout is elapsed")
+                watchdog_logger.warning(f"{CONNECTION_TIMEOUT}s timeout is elapsed")
                 raise ConnectionError
 
 
@@ -111,14 +110,11 @@ async def handle_connection():
 
 
 async def main():
-    loop = await asyncio.gather(
-        gui.draw(messages_queue, sending_queue, status_updates_queue),
-        load_msg_history(filepath, messages_queue),
-        save_msgs(filepath, saving_queue),
-        handle_connection(),
-        return_exceptions=True,
-    )
-    loop.run_until_complete(gui.draw(messages_queue, sending_queue, status_updates_queue))
+    async with create_task_group() as task_group:
+        task_group.start_soon(gui.draw, messages_queue, sending_queue, status_updates_queue)
+        task_group.start_soon(load_msg_history, filepath, messages_queue)
+        task_group.start_soon(save_msgs, filepath, saving_queue)
+        task_group.start_soon(handle_connection)
 
 
 if __name__ == "__main__":
@@ -156,4 +152,4 @@ if __name__ == "__main__":
     token = args.token or env.str("ACCOUNT_TOKEN")
     username = args.username
 
-    asyncio.run(main())
+    run(main)
